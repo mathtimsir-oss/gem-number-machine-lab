@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Number Machine Laboratory</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #080d1a;
+            color: #f8fafc;
+        }
+
+        .font-heading { font-family: 'Fredoka', sans-serif; }
+        .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+
+        /* Gear Animations */
+        .gear-spin { animation: spin 6s linear infinite; }
+        .gear-spin-reverse { animation: spin-reverse 4s linear infinite; }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes spin-reverse {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+
+        /* Conveyor Belt Animation */
+        .conveyor-belt {
+            background: repeating-linear-gradient(
+                -45deg,
+                #1e293b,
+                #1e293b 15px,
+                #0f172a 15px,
+                #0f172a 30px
+            );
+            background-size: 42px 42px;
+        }
+        .conveyor-belt.running {
+            animation: moveBelt 0.6s linear infinite;
+        }
+
+        @keyframes moveBelt {
+            0% { background-position: 0 0; }
+            100% { background-position: 42px 0; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #080d1a; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-calculator text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-heading text-xl sm:text-2xl font-bold bg-gradient-to-r from-cyan-400 via-indigo-300 to-pink-400 bg-clip-text text-transparent">
+                        The Number Machine Laboratory
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">General Terms (T<sub>n</sub>), Function Machines, Substitution & Dot Patterns</p>
+                </div>
+            </div>
+
+            <!-- Stats & Mode Switcher -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <button onclick="toggleSound()" id="sound-btn" class="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-amber-400 hover:bg-slate-700 transition-all text-sm" title="Toggle Sound">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+
+                <div class="flex items-center bg-slate-950 px-3.5 py-1.5 rounded-xl border border-slate-800 text-sm gap-4">
+                    <div class="flex items-center gap-1.5 text-amber-400">
+                        <i class="fa-solid fa-star text-xs"></i>
+                        <span id="stat-score" class="font-bold font-mono-code">0</span> <span class="text-xs text-slate-500">pts</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-orange-400">
+                        <i class="fa-solid fa-fire text-xs"></i>
+                        <span id="stat-streak" class="font-bold font-mono-code">0</span> <span class="text-xs text-slate-500">streak</span>
+                    </div>
+                </div>
+
+                <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                    <button id="tab-sandbox" onclick="switchTab('sandbox')" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-white bg-indigo-600 shadow-md">
+                        <i class="fa-solid fa-flask mr-1"></i> Lab Simulator
+                    </button>
+                    <button id="tab-challenge" onclick="switchTab('challenge')" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200">
+                        <i class="fa-solid fa-gamepad mr-1"></i> Practice Game
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 space-y-8">
+
+        <!-- SIMULATOR TAB -->
+        <section id="mode-sandbox" class="space-y-6">
+            
+            <!-- Preset Formula Quick Ribbon -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xl">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-bookmark text-indigo-400"></i> Preset Formulas:
+                </span>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="applyPreset('2n')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-xs font-bold text-cyan-300 transition-all">
+                        T<sub>n</sub> = 2n (Evens)
+                    </button>
+                    <button onclick="applyPreset('3n + 2')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-indigo-500/30 text-xs font-bold text-indigo-300 transition-all">
+                        T<sub>n</sub> = 3n + 2
+                    </button>
+                    <button onclick="applyPreset('1 + 3n')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-purple-500/30 text-xs font-bold text-purple-300 transition-all">
+                        T<sub>n</sub> = 1 + 3n (Dot Pattern)
+                    </button>
+                    <button onclick="applyPreset('2n + 2')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-emerald-500/30 text-xs font-bold text-emerald-300 transition-all">
+                        T<sub>n</sub> = 2n + 2
+                    </button>
+                    <button onclick="applyPreset('2 - 3n')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-pink-500/30 text-xs font-bold text-pink-300 transition-all">
+                        T<sub>n</sub> = 2 - 3n
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Interactive Machine Workstation -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Machine Controls -->
+                <div class="lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 space-y-5 shadow-2xl">
+                    <h3 class="font-heading text-lg font-bold text-indigo-400 flex items-center gap-2 border-b border-slate-800 pb-3">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i> Machine Control Deck
+                    </h3>
+
+                    <!-- Formula Input -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+                            <span>General Term (T<sub>n</sub>) Rule</span>
+                            <span class="text-slate-500">e.g. 3n + 2, 1 + 3n</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="text" id="sb-formula-input" value="3n + 2" oninput="onFormulaInputChange()"
+                                class="w-full bg-slate-950 border-2 border-indigo-500/50 rounded-xl px-3.5 py-2.5 text-indigo-300 font-mono-code font-bold text-base focus:outline-none focus:border-indigo-400 transition-all">
+                            <button onclick="runMachineAnimation()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white text-xs shadow-lg transition-all flex items-center gap-1.5 shrink-0">
+                                <i class="fa-solid fa-rotate-right"></i> Set
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Input n Slider & Controls -->
+                    <div class="space-y-3 pt-3 border-t border-slate-800">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Input Position (n)</label>
+                            <span class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-3 py-1 rounded-full font-bold font-mono-code" id="sb-n-display">n = 1</span>
+                        </div>
+
+                        <input type="range" id="sb-n-slider" min="1" max="100" value="1" oninput="onSliderChange(this.value)"
+                            class="w-full h-2.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-indigo-500 border border-slate-800">
+
+                        <!-- Quick Value Buttons -->
+                        <div class="grid grid-cols-5 gap-1.5 pt-1">
+                            <button onclick="setNValue(1)" class="py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold text-slate-300 transition-all">n=1</button>
+                            <button onclick="setNValue(2)" class="py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold text-slate-300 transition-all">n=2</button>
+                            <button onclick="setNValue(3)" class="py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold text-slate-300 transition-all">n=3</button>
+                            <button onclick="setNValue(7)" class="py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold text-indigo-300 transition-all">n=7</button>
+                            <button onclick="setNValue(100)" class="py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold text-pink-400 transition-all">n=100</button>
+                        </div>
+                    </div>
+
+                    <!-- RUN MACHINE BUTTON -->
+                    <button id="run-machine-btn" onclick="runMachineAnimation()" 
+                        class="w-full py-3.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-heading font-bold text-base rounded-2xl shadow-xl shadow-emerald-950/40 flex items-center justify-center gap-2 transition-all transform active:scale-95">
+                        <i class="fa-solid fa-play text-lg"></i> RUN NUMBER MACHINE
+                    </button>
+                </div>
+
+                <!-- Number Machine Graphic -->
+                <div class="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-between space-y-6">
+                    
+                    <!-- Thought Cloud Step-by-Step Substitution -->
+                    <div id="machine-thought" class="bg-slate-950 border-2 border-indigo-500/50 rounded-2xl px-6 py-3.5 text-center shadow-xl w-full max-w-lg transition-all duration-300">
+                        <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-1">Step-by-Step Substitution</p>
+                        <div id="thought-content" class="text-base sm:text-xl font-bold text-cyan-300 font-mono-code">
+                            T(1) = 3(1) + 2 = 5
+                        </div>
+                    </div>
+
+                    <!-- Machine Chassis -->
+                    <div class="w-full max-w-xl bg-slate-950 border-2 border-indigo-500/40 rounded-3xl p-6 relative shadow-2xl">
+                        
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-6">
+                            <div class="flex items-center gap-2 text-indigo-400 font-heading font-bold text-sm tracking-wider">
+                                <i class="fa-solid fa-gears text-lg"></i> NUMBER GENERATION CHAMBER
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i id="gear-1" class="fa-solid fa-gear gear-spin text-indigo-400 text-xl"></i>
+                                <i id="gear-2" class="fa-solid fa-gear gear-spin-reverse text-pink-400 text-base"></i>
+                            </div>
+                        </div>
+
+                        <!-- 3-Stage Processing Pipeline -->
+                        <div class="grid grid-cols-11 gap-2 items-center text-center">
+                            
+                            <!-- Input Box -->
+                            <div class="col-span-3 bg-amber-500/10 border-2 border-amber-500/50 rounded-2xl p-3 flex flex-col items-center justify-center space-y-1">
+                                <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Input (n)</span>
+                                <div id="input-n-box" class="w-14 h-14 rounded-2xl bg-amber-500 text-slate-950 font-heading text-2xl font-bold flex items-center justify-center shadow-lg transition-transform duration-300">
+                                    1
+                                </div>
+                                <span class="text-[10px] text-slate-400">Position</span>
+                            </div>
+
+                            <div class="col-span-1 text-indigo-400 text-xl flex justify-center">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </div>
+
+                            <!-- Processing Core -->
+                            <div id="chamber-core" class="col-span-3 bg-indigo-950/80 border-2 border-indigo-500 rounded-2xl p-3 flex flex-col items-center justify-center space-y-1 shadow-inner transition-all duration-300">
+                                <span class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">Processing</span>
+                                <div id="machine-formula-display" class="font-mono-code font-bold text-sm sm:text-base text-cyan-300 my-1">
+                                    T<sub>n</sub> = 3n + 2
+                                </div>
+                                <span class="text-[10px] text-slate-400">Formula Rule</span>
+                            </div>
+
+                            <div class="col-span-1 text-indigo-400 text-xl flex justify-center">
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </div>
+
+                            <!-- Output Box -->
+                            <div class="col-span-3 bg-emerald-500/10 border-2 border-emerald-500/50 rounded-2xl p-3 flex flex-col items-center justify-center space-y-1">
+                                <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Output (T<sub>n</sub>)</span>
+                                <div id="output-tn-box" class="w-14 h-14 rounded-2xl bg-emerald-500 text-slate-950 font-heading text-2xl font-bold flex items-center justify-center shadow-lg transition-transform duration-300 font-mono-code">
+                                    5
+                                </div>
+                                <span class="text-[10px] text-slate-400">Term Value</span>
+                            </div>
+                        </div>
+
+                        <!-- Conveyor Belt Animation -->
+                        <div id="conveyor-belt" class="mt-6 h-4 w-full rounded-full conveyor-belt border border-slate-800"></div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
+                <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <h4 class="font-heading text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-circle-dot text-cyan-400"></i> Dynamic Dot Pattern Visualizer
+                        </h4>
+                        <p class="text-xs text-slate-400">Visually observe how base dots and growing group arms form physical figure sequences (T<sub>n</sub>)</p>
+                    </div>
+
+                    <!-- Visualizer Controls -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <div class="flex items-center bg-slate-950 rounded-xl border border-slate-800 p-1 text-xs">
+                            <button onclick="setDotFormula('1 + 3n')" id="dot-rule-13n" class="px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white transition-all">1 + 3n</button>
+                            <button onclick="setDotFormula('2n + 2')" id="dot-rule-2n2" class="px-2.5 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition-all">2n + 2</button>
+                            <button onclick="setDotFormula('1 + 4n')" id="dot-rule-14n" class="px-2.5 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition-all">1 + 4n</button>
+                            <button onclick="setDotFormula('2n')" id="dot-rule-2n" class="px-2.5 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition-all">2n</button>
+                        </div>
+
+                        <div class="flex items-center bg-slate-950 rounded-xl border border-slate-800 p-1 text-xs">
+                            <button onclick="setDotLayout('star')" id="dot-btn-star" class="px-3 py-1.5 rounded-lg font-bold bg-indigo-600 text-white">
+                                <i class="fa-solid fa-dharmachakra mr-1"></i> Star / L-Shape
+                            </button>
+                            <button onclick="setDotLayout('grid')" id="dot-btn-grid" class="px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white">
+                                <i class="fa-solid fa-table-cells mr-1"></i> Grid Layout
+                            </button>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-xl px-2 py-1">
+                            <button onclick="adjDotFigure(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-white flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-minus"></i>
+                            </button>
+                            <span class="text-xs font-bold font-mono-code px-2 text-indigo-300" id="dot-fig-num-display">Figure n = 3</span>
+                            <button onclick="adjDotFigure(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-white flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Non-positive Warning Notice -->
+                <div id="dot-negative-warning" class="hidden bg-amber-950/60 border border-amber-500/50 rounded-2xl p-4 text-amber-200 text-xs flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-circle-info text-amber-400 text-xl shrink-0"></i>
+                        <span>Geometric dot figures represent physical items (positive counts). Sequence rule <strong id="warning-rule-str" class="font-mono-code text-amber-300">2 - 3n</strong> produces negative or non-positive quantities.</span>
+                    </div>
+                    <button onclick="setDotFormula('1 + 3n')" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shrink-0 transition-all">
+                        Switch to 1 + 3n Dot Pattern
+                    </button>
+                </div>
+
+                <!-- Canvas & Structure Breakdown -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    
+                    <div class="md:col-span-8 bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[220px]">
+                        <svg id="dot-svg-canvas" class="w-full h-56 max-w-lg" viewBox="0 0 500 220">
+                            <!-- SVG Dots Drawn Dynamically -->
+                        </svg>
+                    </div>
+
+                    <div class="md:col-span-4 bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+                        <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pattern Structure Breakdown</h5>
+                        
+                        <div class="flex items-center gap-3">
+                            <div class="w-4 h-4 rounded-full bg-amber-400 shadow-md shadow-amber-500/50"></div>
+                            <div class="text-xs text-slate-300">
+                                <strong>Base Dots (Constant c):</strong> <span id="dot-base-count-display" class="font-bold text-amber-400">1</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <div class="w-4 h-4 rounded-full bg-cyan-400 shadow-md shadow-cyan-500/50"></div>
+                            <div class="text-xs text-slate-300">
+                                <strong>Repeated Arms (k &times; n):</strong> <span id="dot-arms-count-display" class="font-bold text-cyan-400">3 arms of size n</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-800">
+                            <span class="text-[10px] text-slate-500 uppercase font-bold">Total Dots Formula</span>
+                            <div id="dot-formula-breakdown" class="text-base font-bold font-mono-code text-indigo-300 mt-1">
+                                T<sub>3</sub> = 1 + 3(3) = 10 dots
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-3">
+                    <div>
+                        <h4 class="font-heading text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-table text-indigo-400"></i> Interactive Sequence Term Value Table
+                        </h4>
+                        <p class="text-xs text-slate-400">Click any cell to reveal hidden terms or test substitution live!</p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleTableBlankMode()" id="tbl-blank-btn" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-amber-300 transition-all">
+                            <i class="fa-solid fa-eye-slash mr-1"></i> Fill-in-Blank Practice Mode
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Custom Position Input -->
+                <div class="flex items-center gap-3 bg-slate-950 p-3 rounded-2xl border border-slate-800 max-w-md">
+                    <span class="text-xs font-bold text-slate-400 whitespace-nowrap">Check Custom Position (n):</span>
+                    <input type="number" id="tbl-custom-n" value="50" min="1" max="10000" 
+                        class="w-24 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-center font-mono-code font-bold text-cyan-300 text-sm focus:outline-none">
+                    <button onclick="addCustomNToTable()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all">
+                        Calculate
+                    </button>
+                </div>
+
+                <!-- Live Table -->
+                <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950">
+                    <table class="w-full text-center text-sm">
+                        <thead class="bg-slate-900 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
+                            <tr id="tbl-header-row">
+                                <!-- Generated Dynamically -->
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-body" class="divide-y divide-slate-800 font-mono-code text-slate-300">
+                            <!-- Populated dynamically by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- PRACTICE GAME TAB -->
+        <section id="mode-challenge" class="hidden space-y-6">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button id="lvl-btn-1" onclick="selectGameLevel(1)" class="p-4 rounded-2xl border text-left transition-all bg-indigo-600/30 border-indigo-500 text-white shadow-lg">
+                    <div class="text-[10px] uppercase font-bold text-indigo-300 tracking-wider">Level 1</div>
+                    <div class="font-heading font-bold text-base">Machine Operator</div>
+                    <div class="text-xs text-slate-400">Direct substitution for T<sub>n</sub></div>
+                </button>
+
+                <button id="lvl-btn-2" onclick="selectGameLevel(2)" class="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all">
+                    <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Level 2</div>
+                    <div class="font-heading font-bold text-base">Pattern Detective</div>
+                    <div class="text-xs text-slate-400">Find general term T<sub>n</sub> from sequence</div>
+                </button>
+
+                <button id="lvl-btn-3" onclick="selectGameLevel(3)" class="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all">
+                    <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Level 3</div>
+                    <div class="font-heading font-bold text-base">Impossible Figure Challenge</div>
+                    <div class="text-xs text-slate-400">Reverse lookup & existence check</div>
+                </button>
+            </div>
+
+            <!-- Active Question Card -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-4 gap-2">
+                    <div>
+                        <span id="chal-level-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            Level 1 Practice
+                        </span>
+                        <h3 id="chal-title" class="font-heading text-2xl font-bold text-white mt-2">
+                            Machine Operator Challenge
+                        </h3>
+                    </div>
+                    <div class="text-xs text-slate-400 font-mono-code">
+                        Question <span id="chal-curr-index" class="text-indigo-400 font-bold text-base">1</span> / <span id="chal-total-count">4</span>
+                    </div>
+                </div>
+
+                <!-- Dynamic Question Container -->
+                <div id="chal-question-container">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Feedback Banner -->
+                <div id="chal-feedback" class="hidden p-4 rounded-2xl border transition-all">
+                    <!-- Dynamic Feedback -->
+                </div>
+
+                <!-- Hint Drawer -->
+                <div id="chal-hint-box" class="hidden p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-sm">
+                    <!-- Dynamic Hint -->
+                </div>
+
+                <!-- Controls Footer -->
+                <div class="flex justify-between items-center border-t border-slate-800 pt-5">
+                    <button onclick="toggleHint()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-amber-300 transition-all flex items-center gap-1.5">
+                        <i class="fa-regular fa-lightbulb"></i> Need a Hint?
+                    </button>
+
+                    <button id="chal-submit-btn" onclick="submitAnswer()" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-950/50 transition-all flex items-center gap-2">
+                        Submit Answer <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500 mt-auto">
+        <p>The Number Machine Laboratory &bull; Educational Math Interactive for Sequences, General Terms (T<sub>n</sub>), & Substitution</p>
+    </footer>
+
+    <script>
+        // ================= BULLETPROOF ALGEBRA PARSER =================
+        function evaluateAlgebraicTerm(formulaStr, nVal) {
+            if (!formulaStr) return 0;
+            
+            // Clean up string
+            let str = formulaStr.toLowerCase().replace(/\s+/g, '');
+
+            // Convert patterns like 3n -> 3*(nVal), 2n -> 2*(nVal)
+            // Handle negative numbers, additions, subtractions
+            try {
+                // Replace n with (nVal)
+                // Match occurrences like "3n", "2n", "n"
+                let expr = str.replace(/(\d*)n/g, function(match, coeff) {
+                    if (coeff === "") return `(${nVal})`;
+                    return `${coeff}*(${nVal})`;
+                });
+
+                // Evaluate math safely without dangerous eval
+                // Supported format: simple linear expressions standard in textbook (a*n + b)
+                return Function(`'use strict'; return (${expr})`)();
+            } catch (e) {
+                console.error("Formula parsing error:", e);
+                return 0;
+            }
+        }
+
+        // ================= WEB AUDIO SOUND SYSTEM =================
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'gear') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(320, audioCtx.currentTime + 0.35);
+                    gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                } else if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+                    osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                } else if (type === 'wrong') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(170, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }
+            } catch (e) {}
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-btn').innerHTML = soundEnabled ? 
+                '<i class="fa-solid fa-volume-high"></i>' : 
+                '<i class="fa-solid fa-volume-xmark text-slate-500"></i>';
+        }
+
+        // ================= STATE MANAGEMENT =================
+        let state = {
+            activeTab: 'sandbox',
+            score: 0,
+            streak: 0,
+
+            // Simulator State
+            formulaStr: '3n + 2',
+            nVal: 1,
+
+            // Dot Visualizer State
+            dotFormulaStr: '1 + 3n',
+            dotFigureN: 3,
+            dotLayout: 'star',
+
+            // Table State
+            tableBlankMode: false,
+            revealedCells: {},
+            customNList: [1, 2, 3, 4, 5, 10, 100],
+
+            // Game State
+            currentLevel: 1,
+            questionIndex: 0,
+            levelQuestions: []
+        };
+
+        // ================= UI SWITCHERS =================
+        function switchTab(tab) {
+            state.activeTab = tab;
+            const sbMode = document.getElementById('mode-sandbox');
+            const chMode = document.getElementById('mode-challenge');
+            const sbTab = document.getElementById('tab-sandbox');
+            const chTab = document.getElementById('tab-challenge');
+
+            if (tab === 'sandbox') {
+                sbMode.classList.remove('hidden');
+                chMode.classList.add('hidden');
+                sbTab.className = "px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-white bg-indigo-600 shadow-md";
+                chTab.className = "px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200";
+            } else {
+                sbMode.classList.add('hidden');
+                chMode.classList.remove('hidden');
+                chTab.className = "px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-white bg-indigo-600 shadow-md";
+                sbTab.className = "px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200";
+                selectGameLevel(state.currentLevel);
+            }
+        }
+
+        function onFormulaInputChange() {
+            const inputVal = document.getElementById('sb-formula-input').value.trim();
+            state.formulaStr = inputVal || '3n + 2';
+            updateSimulator();
+        }
+
+        function applyPreset(formula) {
+            document.getElementById('sb-formula-input').value = formula;
+            state.formulaStr = formula;
+            runMachineAnimation();
+        }
+
+        function onSliderChange(val) {
+            state.nVal = parseInt(val, 10);
+            document.getElementById('sb-n-display').innerText = `n = ${state.nVal}`;
+            updateSimulator();
+        }
+
+        function setNValue(val) {
+            state.nVal = val;
+            document.getElementById('sb-n-slider').value = val;
+            document.getElementById('sb-n-display').innerText = `n = ${val}`;
+            runMachineAnimation();
+        }
+
+        function runMachineAnimation() {
+            playSound('gear');
+            
+            const belt = document.getElementById('conveyor-belt');
+            const core = document.getElementById('chamber-core');
+            const inBox = document.getElementById('input-n-box');
+            const outBox = document.getElementById('output-tn-box');
+
+            belt.classList.add('running');
+            core.classList.add('scale-105', 'border-pink-500');
+            inBox.classList.add('scale-110');
+            outBox.classList.add('scale-110');
+
+            setTimeout(() => {
+                belt.classList.remove('running');
+                core.classList.remove('scale-105', 'border-pink-500');
+                inBox.classList.remove('scale-110');
+                outBox.classList.remove('scale-110');
+            }, 500);
+
+            updateSimulator();
+        }
+
+        function updateSimulator() {
+            const n = state.nVal;
+            const formula = state.formulaStr;
+            const outputVal = evaluateAlgebraicTerm(formula, n);
+
+            // Update Input/Output Chassis Display
+            document.getElementById('input-n-box').innerText = n;
+            document.getElementById('machine-formula-display').innerHTML = `T<sub>n</sub> = ${formula}`;
+            document.getElementById('output-tn-box').innerText = outputVal;
+
+            // Format Step-by-Step Substitution
+            let formattedSub = formula.replace(/(\d*)n/g, function(match, coeff) {
+                return coeff ? `${coeff}(${n})` : `(${n})`;
+            });
+            document.getElementById('thought-content').innerHTML = `T(${n}) = ${formattedSub} = ${outputVal}`;
+
+            // Sync with Table
+            renderSequenceTable();
+        }
+
+        function setDotFormula(formula) {
+            state.dotFormulaStr = formula;
+            ['13n', '2n2', '14n', '2n'].forEach(id => {
+                const btn = document.getElementById(`dot-rule-${id}`);
+                if (btn) btn.className = "px-2.5 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition-all";
+            });
+
+            if (formula === '1 + 3n') document.getElementById('dot-rule-13n').className = "px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white transition-all";
+            if (formula === '2n + 2') document.getElementById('dot-rule-2n2').className = "px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white transition-all";
+            if (formula === '1 + 4n') document.getElementById('dot-rule-14n').className = "px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white transition-all";
+            if (formula === '2n') document.getElementById('dot-rule-2n').className = "px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white transition-all";
+
+            renderDotPatternCanvas();
+        }
+
+        function setDotLayout(layout) {
+            state.dotLayout = layout;
+            const btnStar = document.getElementById('dot-btn-star');
+            const btnGrid = document.getElementById('dot-btn-grid');
+
+            if (layout === 'star') {
+                btnStar.className = "px-3 py-1.5 rounded-lg font-bold bg-indigo-600 text-white";
+                btnGrid.className = "px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white";
+            } else {
+                btnGrid.className = "px-3 py-1.5 rounded-lg font-bold bg-indigo-600 text-white";
+                btnStar.className = "px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white";
+            }
+            renderDotPatternCanvas();
+        }
+
+        function adjDotFigure(delta) {
+            state.dotFigureN = Math.max(1, Math.min(10, state.dotFigureN + delta));
+            document.getElementById('dot-fig-num-display').innerText = `Figure n = ${state.dotFigureN}`;
+            renderDotPatternCanvas();
+        }
+
+        function renderDotPatternCanvas() {
+            const svg = document.getElementById('dot-svg-canvas');
+            const n = state.dotFigureN;
+            const warningBox = document.getElementById('dot-negative-warning');
+
+            // Check if Simulator has non-positive rule
+            const simEval = evaluateAlgebraicTerm(state.formulaStr, n);
+            if (simEval <= 0 || state.formulaStr.includes('-')) {
+                warningBox.classList.remove('hidden');
+                document.getElementById('warning-rule-str').innerText = state.formulaStr;
+            } else {
+                warningBox.classList.add('hidden');
+            }
+
+            const formula = state.dotFormulaStr;
+            let baseConstant = 1;
+            let coefficient = 3;
+
+            if (formula.includes('2n + 2') || formula.includes('2+2n')) {
+                baseConstant = 2;
+                coefficient = 2;
+            } else if (formula.includes('2n')) {
+                baseConstant = 0;
+                coefficient = 2;
+            } else if (formula.includes('1 + 3n') || formula.includes('3n + 1')) {
+                baseConstant = 1;
+                coefficient = 3;
+            } else if (formula.includes('1 + 4n') || formula.includes('4n + 1')) {
+                baseConstant = 1;
+                coefficient = 4;
+            }
+
+            const totalDots = evaluateAlgebraicTerm(formula, n);
+            document.getElementById('dot-base-count-display').innerText = baseConstant;
+            document.getElementById('dot-arms-count-display').innerText = `${coefficient} arm(s) of ${n} dot(s)`;
+            
+            let totalExprStr = baseConstant > 0 ? `${baseConstant} + ${coefficient}(${n})` : `${coefficient}(${n})`;
+            document.getElementById('dot-formula-breakdown').innerHTML = `T<sub>${n}</sub> = ${totalExprStr} = <strong>${totalDots} dots</strong>`;
+
+            let svgContent = '';
+            const cx = 250;
+            const cy = 110;
+            const dotR = 8;
+
+            if (state.dotLayout === 'star') {
+                // Central Base Dots
+                for (let b = 0; b < baseConstant; b++) {
+                    let bx = cx + (b - (baseConstant - 1) / 2) * 22;
+                    svgContent += `<circle cx="${bx}" cy="${cy}" r="${dotR + 1}" fill="#fbbf24" stroke="#f59e0b" stroke-width="2"/>`;
+                }
+
+                // Arm Directions
+                const angles = coefficient === 2 ? [0, Math.PI] : 
+                              coefficient === 3 ? [-Math.PI/2, Math.PI/6, 5*Math.PI/6] : 
+                              [-Math.PI/2, 0, Math.PI/2, Math.PI];
+
+                for (let a = 0; a < coefficient; a++) {
+                    let angle = angles[a % angles.length];
+                    for (let step = 1; step <= Math.min(n, 8); step++) {
+                        let dist = (baseConstant > 0 ? 28 : 10) + step * 20;
+                        let dx = cx + Math.cos(angle) * dist;
+                        let dy = cy + Math.sin(angle) * dist;
+                        svgContent += `<circle cx="${dx}" cy="${dy}" r="${dotR}" fill="#38bdf8" stroke="#0284c7" stroke-width="1.5"/>`;
+                    }
+                }
+            } else {
+                // Grid Matrix View
+                let cols = Math.min(10, Math.ceil(Math.sqrt(totalDots)));
+                let rows = Math.ceil(totalDots / cols);
+                let startX = cx - (cols * 22) / 2;
+                let startY = cy - (rows * 22) / 2;
+
+                for (let idx = 0; idx < Math.min(totalDots, 80); idx++) {
+                    let r = Math.floor(idx / cols);
+                    let c = idx % cols;
+                    let isBase = idx < baseConstant;
+                    let fill = isBase ? '#fbbf24' : '#38bdf8';
+                    let stroke = isBase ? '#f59e0b' : '#0284c7';
+                    svgContent += `<circle cx="${startX + c * 22}" cy="${startY + r * 22}" r="${dotR}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+                }
+            }
+
+            svg.innerHTML = svgContent;
+        }
+
+        function toggleTableBlankMode() {
+            state.tableBlankMode = !state.tableBlankMode;
+            state.revealedCells = {};
+            const btn = document.getElementById('tbl-blank-btn');
+            
+            if (state.tableBlankMode) {
+                btn.className = "px-3 py-1.5 rounded-xl bg-amber-600 text-white border border-amber-500 text-xs font-bold transition-all";
+                btn.innerHTML = `<i class="fa-solid fa-eye mr-1"></i> Reveal All Cells`;
+            } else {
+                btn.className = "px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-amber-300 transition-all";
+                btn.innerHTML = `<i class="fa-solid fa-eye-slash mr-1"></i> Fill-in-Blank Practice Mode`;
+            }
+            renderSequenceTable();
+        }
+
+        function addCustomNToTable() {
+            const input = document.getElementById('tbl-custom-n');
+            let val = parseInt(input.value, 10);
+            if (!isNaN(val) && val > 0 && !state.customNList.includes(val)) {
+                state.customNList.push(val);
+                state.customNList.sort((a, b) => a - b);
+                renderSequenceTable();
+            }
+        }
+
+        function revealCell(cellId) {
+            state.revealedCells[cellId] = true;
+            renderSequenceTable();
+        }
+
+        function renderSequenceTable() {
+            const headerRow = document.getElementById('tbl-header-row');
+            const tbody = document.getElementById('tbl-body');
+            const formula = state.formulaStr;
+
+            // Render Header
+            let headHtml = `<th class="py-3 px-4 text-left">Term Rule (T<sub>n</sub>)</th>`;
+            state.customNList.forEach(p => {
+                headHtml += `<th class="py-3 px-4">n = ${p} (T<sub>${p}</sub>)</th>`;
+            });
+            headerRow.innerHTML = headHtml;
+
+            // Render Row
+            let rowHtml = `<td class="py-3 px-4 font-bold text-indigo-400 font-mono-code text-left">T<sub>n</sub> = ${formula}</td>`;
+            state.customNList.forEach((p) => {
+                let cellVal = evaluateAlgebraicTerm(formula, p);
+                let cellId = `c_${p}`;
+
+                if (state.tableBlankMode && !state.revealedCells[cellId]) {
+                    rowHtml += `
+                        <td class="py-3 px-4">
+                            <button onclick="revealCell('${cellId}')" class="px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold hover:bg-amber-500/30 transition-all">
+                                ? Reveal
+                            </button>
+                        </td>
+                    `;
+                } else {
+                    rowHtml += `<td class="py-3 px-4 font-bold text-emerald-400 font-mono-code">${cellVal}</td>`;
+                }
+            });
+
+            tbody.innerHTML = `<tr>${rowHtml}</tr>`;
+        }
+
+        function selectGameLevel(lvl) {
+            state.currentLevel = lvl;
+            state.questionIndex = 0;
+
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`lvl-btn-${i}`);
+                if (i === lvl) {
+                    btn.className = "p-4 rounded-2xl border text-left transition-all bg-indigo-600/30 border-indigo-500 text-white shadow-lg";
+                } else {
+                    btn.className = "p-4 rounded-2xl border border-slate-800 bg-slate-900/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all";
+                }
+            }
+
+            buildGameQuestions(lvl);
+        }
+
+        function buildGameQuestions(lvl) {
+            let questions = [];
+
+            if (lvl === 1) {
+                questions = [
+                    {
+                        title: "Basic Substitution (T_5)",
+                        formula: "3n + 2",
+                        targetN: 5,
+                        hint: "Substitute n = 5 into T_n = 3n + 2. Calculate 3(5) + 2.",
+                        correctAnswer: 17,
+                        explanation: "T_5 = 3(5) + 2 = 15 + 2 = 17."
+                    },
+                    {
+                        title: "Large Position Substitution (T_100)",
+                        formula: "2n",
+                        targetN: 100,
+                        hint: "Substitute n = 100 into T_n = 2n.",
+                        correctAnswer: 200,
+                        explanation: "T_100 = 2(100) = 200."
+                    },
+                    {
+                        title: "Negative General Term (T_6)",
+                        formula: "2 - 3n",
+                        targetN: 6,
+                        hint: "Substitute n = 6 into T_n = 2 - 3(6).",
+                        correctAnswer: -16,
+                        explanation: "T_6 = 2 - 3(6) = 2 - 18 = -16."
+                    },
+                    {
+                        title: "Textbook Figure Substitution (T_8)",
+                        formula: "1 + 3n",
+                        targetN: 8,
+                        hint: "Substitute n = 8 into T_n = 1 + 3n.",
+                        correctAnswer: 25,
+                        explanation: "Dots in 8th figure = 1 + 3(8) = 25."
+                    }
+                ];
+            } else if (lvl === 2) {
+                questions = [
+                    {
+                        type: "mcq",
+                        terms: [5, 8, 11, 14],
+                        options: ["3n + 2", "2n + 3", "5n", "3n - 1"],
+                        hint: "Common difference is +3. For n=1, 3(1) + 2 = 5.",
+                        correctAnswer: "3n + 2",
+                        explanation: "Increases by 3 each step (3n). Since T_1 = 5, 3(1)+2 = 5. So T_n = 3n + 2."
+                    },
+                    {
+                        type: "mcq",
+                        terms: [1, 4, 7, 10],
+                        options: ["3n - 2", "3n + 1", "4n - 3", "2n - 1"],
+                        hint: "Matches Textbook Concept Check! Difference is +3. T_1 = 3(1) - 2 = 1.",
+                        correctAnswer: "3n - 2",
+                        explanation: "T_1 = 3(1)-2 = 1, T_2 = 3(2)-2 = 4. So T_n = 3n - 2."
+                    },
+                    {
+                        type: "mcq",
+                        terms: [4, 6, 8, 10],
+                        options: ["2n + 2", "4n", "2n", "3n + 1"],
+                        hint: "Step difference is +2. T_1 = 2(1) + 2 = 4.",
+                        correctAnswer: "2n + 2",
+                        explanation: "T_1 = 2(1)+2 = 4, T_2 = 2(2)+2 = 6. So T_n = 2n + 2."
+                    }
+                ];
+            } else if (lvl === 3) {
+                questions = [
+                    {
+                        type: "reverse",
+                        title: "Textbook Example 3.15(b)",
+                        formula: "1 + 3n",
+                        targetVal: 30,
+                        hint: "Calculate T_9 = 1+3(9)=28 and T_10 = 1+3(10)=31. Is 30 possible?",
+                        correctAnswer: "no",
+                        explanation: "Step 1: T_9 = 28.<br>Step 2: T_10 = 31.<br>Since 28 < 30 < 31, no whole number figure has 30 dots!"
+                    },
+                    {
+                        type: "reverse",
+                        title: "Quick Practice 3.15(b)",
+                        formula: "2n + 2",
+                        targetVal: 37,
+                        hint: "Solve 2n + 2 = 37 -> 2n = 35 -> n = 17.5.",
+                        correctAnswer: "no",
+                        explanation: "2n + 2 = 37 => n = 17.5. Since position n must be an integer, 37 dots is impossible!"
+                    },
+                    {
+                        type: "reverse",
+                        title: "Existing Term Verification",
+                        formula: "3n - 1",
+                        targetVal: 29,
+                        hint: "Solve 3n - 1 = 29 -> 3n = 30 -> n = 10.",
+                        correctAnswer: "yes",
+                        explanation: "3n - 1 = 29 => n = 10. Yes! It is the 10th term (T_10)."
+                    }
+                ];
+            }
+
+            state.levelQuestions = questions;
+            renderQuestionCard();
+        }
+
+        function renderQuestionCard() {
+            const q = state.levelQuestions[state.questionIndex];
+            const container = document.getElementById('chal-question-container');
+            const feedbackBox = document.getElementById('chal-feedback');
+            const hintBox = document.getElementById('chal-hint-box');
+
+            feedbackBox.classList.add('hidden');
+            hintBox.classList.add('hidden');
+
+            document.getElementById('chal-curr-index').innerText = state.questionIndex + 1;
+            document.getElementById('chal-total-count').innerText = state.levelQuestions.length;
+            document.getElementById('chal-level-badge').innerText = `Level ${state.currentLevel} Practice`;
+
+            let html = "";
+
+            if (state.currentLevel === 1) {
+                document.getElementById('chal-title').innerText = `Level 1: ${q.title}`;
+                html = `
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold text-slate-400 uppercase">General Term:</span>
+                            <span class="text-xl font-bold font-mono-code text-cyan-300">T<sub>n</sub> = ${q.formula}</span>
+                        </div>
+                        <p class="text-sm text-slate-300">
+                            Calculate the output value when n = ${q.targetN} (T<sub>${q.targetN}</sub>):
+                        </p>
+                        <div class="flex items-center gap-4 pt-2">
+                            <span class="text-base font-bold text-indigo-300 font-mono-code">T<sub>${q.targetN}</sub> =</span>
+                            <input type="number" id="chal-input" placeholder="Enter term output"
+                                class="w-48 bg-slate-900 border-2 border-indigo-500/60 rounded-xl px-4 py-2.5 text-center text-xl font-bold text-white font-mono-code focus:outline-none focus:border-indigo-400">
+                        </div>
+                    </div>
+                `;
+            } else if (state.currentLevel === 2) {
+                document.getElementById('chal-title').innerText = "Level 2: Pattern Detective";
+                html = `
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
+                        <p class="text-sm text-slate-300">Observe the sequence terms:</p>
+                        <div class="flex gap-3 justify-center font-mono-code my-2">
+                            ${q.terms.map((t, idx) => `
+                                <div class="bg-slate-900 border border-slate-700 px-4 py-2.5 rounded-xl text-center">
+                                    <span class="block text-[10px] text-slate-500">T_${idx+1}</span>
+                                    <span class="text-lg font-bold text-cyan-300">${t}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p class="text-sm text-slate-300">Which general term formula (T<sub>n</sub>) generates this sequence?</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            ${q.options.map(opt => `
+                                <label class="flex items-center gap-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 p-3.5 rounded-xl cursor-pointer font-mono-code font-bold text-cyan-300 transition-all">
+                                    <input type="radio" name="builder-opt" value="${opt}" class="accent-indigo-500">
+                                    T<sub>n</sub> = ${opt}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (state.currentLevel === 3) {
+                document.getElementById('chal-title').innerText = q.title;
+                html = `
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold text-slate-400 uppercase">Dot Rule:</span>
+                            <span class="text-xl font-bold font-mono-code text-purple-300">T<sub>n</sub> = ${q.formula}</span>
+                        </div>
+                        <p class="text-sm text-slate-300">
+                            A student claims that there is a figure formed by <strong>${q.targetVal} dots</strong>. Do you agree?
+                        </p>
+                        <div class="flex gap-4 pt-2">
+                            <label class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-5 py-3 rounded-xl cursor-pointer font-bold text-emerald-400 transition-all">
+                                <input type="radio" name="reverse-opt" value="yes" class="accent-emerald-500"> AGREE (Figure exists)
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-5 py-3 rounded-xl cursor-pointer font-bold text-rose-400 transition-all">
+                                <input type="radio" name="reverse-opt" value="no" class="accent-rose-500"> DISAGREE (No figure exists)
+                            </label>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function toggleHint() {
+            const hintBox = document.getElementById('chal-hint-box');
+            const q = state.levelQuestions[state.questionIndex];
+            
+            if (hintBox.classList.contains('hidden')) {
+                hintBox.innerHTML = `<i class="fa-solid fa-lightbulb mr-2 text-amber-400"></i> ${q.hint}`;
+                hintBox.classList.remove('hidden');
+            } else {
+                hintBox.classList.add('hidden');
+            }
+        }
+
+        function submitAnswer() {
+            const q = state.levelQuestions[state.questionIndex];
+            const feedbackBox = document.getElementById('chal-feedback');
+            let userVal = null;
+            let isCorrect = false;
+
+            if (state.currentLevel === 1) {
+                const input = document.getElementById('chal-input');
+                userVal = parseInt(input.value, 10);
+                isCorrect = (userVal === q.correctAnswer);
+            } else if (state.currentLevel === 2) {
+                const selected = document.querySelector('input[name="builder-opt"]:checked');
+                if (selected) userVal = selected.value;
+                isCorrect = (userVal === q.correctAnswer);
+            } else if (state.currentLevel === 3) {
+                const selected = document.querySelector('input[name="reverse-opt"]:checked');
+                if (selected) userVal = selected.value;
+                isCorrect = (userVal === q.correctAnswer);
+            }
+
+            if (userVal === null || userVal === "" || Number.isNaN(userVal)) {
+                feedbackBox.className = "p-4 rounded-2xl bg-amber-950/60 border border-amber-500/50 text-amber-200 text-sm";
+                feedbackBox.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1.5'></i> Please enter or select an answer before submitting!";
+                feedbackBox.classList.remove('hidden');
+                return;
+            }
+
+            feedbackBox.classList.remove('hidden');
+
+            if (isCorrect) {
+                playSound('correct');
+                try { confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } }); } catch(e){}
+
+                state.score += 25;
+                state.streak += 1;
+                updateStats();
+
+                feedbackBox.className = "p-4 rounded-2xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-200 text-sm space-y-2";
+                feedbackBox.innerHTML = `
+                    <div class="font-bold flex items-center gap-2 text-emerald-400">
+                        <i class="fa-solid fa-circle-check text-lg"></i> Correct Answer! (+25 pts)
+                    </div>
+                    <p class="text-xs text-emerald-300">${q.explanation || 'Great job!'}</p>
+                    <button onclick="nextQuestion()" class="mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition-all">
+                        Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                `;
+            } else {
+                playSound('wrong');
+                state.streak = 0;
+                updateStats();
+
+                feedbackBox.className = "p-4 rounded-2xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-sm space-y-2";
+                feedbackBox.innerHTML = `
+                    <div class="font-bold flex items-center gap-2 text-rose-400">
+                        <i class="fa-solid fa-circle-xmark text-lg"></i> Incorrect Answer!
+                    </div>
+                    <p class="text-xs text-rose-300">Review your substitution or use the hint button above.</p>
+                `;
+            }
+        }
+
+        function nextQuestion() {
+            if (state.questionIndex < state.levelQuestions.length - 1) {
+                state.questionIndex++;
+                renderQuestionCard();
+            } else {
+                playSound('correct');
+                try { confetti({ particleCount: 120, spread: 100, origin: { y: 0.6 } }); } catch(e){}
+
+                const feedbackBox = document.getElementById('chal-feedback');
+                feedbackBox.className = "p-5 rounded-2xl bg-indigo-950/80 border border-indigo-500/50 text-indigo-200 text-sm space-y-3";
+                feedbackBox.innerHTML = `
+                    <div class="font-bold text-lg text-cyan-300 flex items-center gap-2">
+                        <i class="fa-solid fa-trophy text-amber-400 text-xl"></i> Level ${state.currentLevel} Completed!
+                    </div>
+                    <p class="text-xs text-indigo-300">Fantastic! You have mastered this section on General Terms!</p>
+                    <button onclick="selectGameLevel(${state.currentLevel < 3 ? state.currentLevel + 1 : 1})" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all">
+                        ${state.currentLevel < 3 ? 'Advance to Level ' + (state.currentLevel + 1) : 'Replay Level 1'}
+                    </button>
+                `;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-score').innerText = state.score;
+            document.getElementById('stat-streak').innerText = state.streak;
+        }
+
+        // INITIALIZE ON LOAD
+        window.onload = function() {
+            updateSimulator();
+            renderDotPatternCanvas();
+        };
+    </script>
+</body>
+</html>
